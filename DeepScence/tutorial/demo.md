@@ -5,12 +5,12 @@
 <div style="font-size:1.3em">
 
 - [1. Intro](#1-intro)  
-- [2. Example: In-vitro IMR-90 dataset](#2-example-in-vitro-imr-90-dataset)  
-  - [2.1 Prepare input for DeepScence](#21-prepare-input-for-deepscence)  
-  - [2.2 Run DeepScence & Visualize](#22-run-deepscence--visualize)  
-- [3. Example: In-vivo mouse muscle data](#3-example-in-vivo-mouse-muscle-data)  
-  - [3.1 Prepare input for DeepScence](#31-prepare-input-for-deepscence)  
-  - [3.2 Run DeepScence & Visualize](#32-run-deepscence--visualize)  
+- [2. Example: data with multiple cell types (mouse muscle)](#3-example-in-vivo-mouse-muscle-data)  
+  - [2.1 Prepare input for DeepScence](#31-prepare-input-for-deepscence)  
+  - [2.2 Run DeepScence & Visualize](#32-run-deepscence--visualize) 
+- [3. Example: data with single cell type (IMR-90 in-vitro)](#2-example-in-vitro-imr-90-dataset)  
+  - [3.1 Prepare input for DeepScence](#21-prepare-input-for-deepscence)  
+  - [3.2 Run DeepScence & Visualize](#22-run-deepscence--visualize)  
 - [4. Working with mouse data and other parameters](#4-working-with-mouse-data-and-other-parameters)  
 
 </div>
@@ -43,11 +43,68 @@ For datasets collected in vivo where multiple cell types are present, please ref
 </div>
 
 
-## 2. Example: In-vitro IMR-90 dataset
+## 2. Example: data with multiple cell types (mouse muscle)
+This is an in-vivo scRNA-seq dataset collected from mouse muscle, with senescence induced by cardiotoxin (CTX). `adata.obs["stim"] == "CTX"` represents the injured condition, which is more enriched in senescent cells.
+
+Since multiple cell types are present in this dataset, it is important to control for cell type variation when running DeepScence. To do this, assign additional column by setting `adata.obs["b"] = adata.obs["celltype"]` so that DeepScence treat cell types as “batch” groups. During training, DeepScence minimizes the maximum mean discrepancy (MMD) between these groups in the latent space. This ensures that the senescence scores are not confounded by cell type–specific variation and is recommended when dealing with in-vivo datasets.
+
+### 2.1 Prepare input for DeepScence
+
+
+```python
+adata = sc.read_h5ad("./mouse_muscle.h5ad")
+sc.pp.filter_genes(adata, min_cells=1)
+dca(adata) # This step might take some time...
+```
+
+    dca: Successfully preprocessed 14946 genes and 3591 cells.
+    dca: Calculating reconstructions...
+
+
+### 2.2 Run DeepScence and Visualize
+
+
+```python
+# running mouse dataset
+adata.obs["b"] = adata.obs["celltype"].astype(str)
+adata = DeepScence(adata, binarize=False, species="mouse")
+
+```
+
+    [2025-08-13 20:28] GPU not available, using CPU...
+    [2025-08-13 20:28] Input is not count, processed 14946 genes and 3591 cells.
+    [2025-08-13 20:28] Using 35 genes in the gene set for scoring.
+    [2025-08-13 20:28] Lambda provided, capturing scores in 2 neurons.
+    [2025-08-13 20:28] Training on 3232 cells, validate on 359 cells.
+     89%|████████▉ | 268/300 [00:10<00:01, 26.76it/s]
+
+
+
+```python
+# Plot senescence score distributions comparing conditions
+plt.figure(figsize=(12, 6))
+sns.boxplot(
+    data=adata.obs,
+    x="celltype",
+    y="ds",
+    hue="stim",
+    palette=["#60efff", "#0061ff"]
+)
+plt.show()
+```
+
+
+    
+![png](demo_files/demo_14_0.png)
+    
+
+
+
+## 3. Example: data with single cell type (IMR-90 in-vitro)
 This is an in-vitro scRNA-seq dataset for IMR-90 cell line, with senescence induced by OSKM factors. Senescence information of cells are labeled as ground truth. Note this data set has only one cell type that is IMR-90.
 
 
-### 2.1 Prepare input for DeepScence
+### 3.1 Prepare input for DeepScence
 
 
 ```python
@@ -66,7 +123,7 @@ dca(adata)
     dca: Calculating reconstructions...
 
 
-### 2.2 Run DeepScence and visualize
+### 3.2 Run DeepScence and visualize
 
 
 ```python
@@ -121,61 +178,6 @@ plt.show()
 ![png](demo_files/demo_8_1.png)
     
 
-
-## 3. Example: In-vivo mouse muscle data
-This is an in-vivo scRNA-seq dataset collected from mouse muscle, with senescence induced by cardiotoxin (CTX). `adata.obs["stim"] == "CTX"` represents the injured condition, which is more enriched in senescent cells.
-
-Since multiple cell types are present in this dataset, it is important to control for cell type variation when running DeepScence. To do this, assign additional column by setting `adata.obs["b"] = adata.obs["celltype"]` so that DeepScence treat cell types as “batch” groups. During training, DeepScence minimizes the maximum mean discrepancy (MMD) between these groups in the latent space. This ensures that the senescence scores are not confounded by cell type–specific variation and is recommended when dealing with in-vivo datasets.
-
-### 3.1 Prepare input for DeepScence
-
-
-```python
-adata = sc.read_h5ad("./mouse_muscle.h5ad")
-sc.pp.filter_genes(adata, min_cells=1)
-dca(adata) # This step might take some time...
-```
-
-    dca: Successfully preprocessed 14946 genes and 3591 cells.
-    dca: Calculating reconstructions...
-
-
-### 3.2 Run DeepScence and Visualize
-
-
-```python
-# running mouse dataset
-adata.obs["b"] = adata.obs["celltype"].astype(str)
-adata = DeepScence(adata, binarize=False, species="mouse")
-
-```
-
-    [2025-08-13 20:28] GPU not available, using CPU...
-    [2025-08-13 20:28] Input is not count, processed 14946 genes and 3591 cells.
-    [2025-08-13 20:28] Using 35 genes in the gene set for scoring.
-    [2025-08-13 20:28] Lambda provided, capturing scores in 2 neurons.
-    [2025-08-13 20:28] Training on 3232 cells, validate on 359 cells.
-     89%|████████▉ | 268/300 [00:10<00:01, 26.76it/s]
-
-
-
-```python
-# Plot senescence score distributions comparing conditions
-plt.figure(figsize=(12, 6))
-sns.boxplot(
-    data=adata.obs,
-    x="celltype",
-    y="ds",
-    hue="stim",
-    palette=["#60efff", "#0061ff"]
-)
-plt.show()
-```
-
-
-    
-![png](demo_files/demo_14_0.png)
-    
 
 
 ## 4. Working with mouse data and other parameters
