@@ -293,5 +293,6 @@ def binarize_adata(adata, verbose=True):
 
     plt.tight_layout()
     plt.show()
+    plt.savefig('deepscence.pdf')
 
     return adata
