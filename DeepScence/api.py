@@ -125,13 +125,13 @@ def DeepScence(
     if not sp.sparse.issparse(adata.X):
         adata.X = sp.sparse.csr_matrix(adata.X)
 
-    # save the original version
-    original = adata.copy()
-
+    
+    
     # read adata, subset, calculate up/down metrics
     adata = read_dataset(
         adata, species=species, n=n, custome_gs=custome_gs, verbose=True
     )
+
     if "b" not in adata.obs.columns:  # don't do MMD if no batch specified
         adata.obs["b"] = "placeholder"
         lambda_mmd = None
@@ -166,12 +166,12 @@ def DeepScence(
     scores = model.predict(adata)
 
     scores, log = fix_score_direction(scores, adata, n, species, anchor_gene)
-    original.obs["ds"] = scores
-    original.uns["log"] = log
+    adata.obs["ds"] = scores
+    adata.uns["log"] = log
 
     if binarize:
         # use adata.obs["ds"] to fit a mixture of 2 normal.
-        original = binarize_adata(original)
+        adata = binarize_adata(adata)
 
-    original.X = sp.sparse.csr_matrix(original.X)
-    return original
+    print(f"incode: {type(adata.X)}")
+    return adata

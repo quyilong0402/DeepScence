@@ -39,14 +39,12 @@ def read_dataset(
             )
 
     # get geneset
-
     geneset = get_geneset(n, species, custome_gs)
 
     # log normalize, subset, and scale
-    out = adata.copy()
-    if "log1p" in out.uns_keys():
-        del out.uns["log1p"]
-    out = normalize(out, geneset, verbose=verbose)
+    if "log1p" in adata.uns_keys():
+        del adata.uns["log1p"]
+    out = normalize(adata, geneset, verbose=verbose)
 
     return out
 
