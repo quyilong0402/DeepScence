@@ -24,7 +24,9 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 
 def DeepScence(
-    adata,
+    adata=None,
+    matrix_path=None,
+    sep=None,
     binarize=False,
     species="human",
     custome_gs=None,
@@ -49,8 +51,13 @@ def DeepScence(
 
     Parameters
     ----------
-    adata : AnnData
+    adata : AnnData, optional
         AnnData object of the dataset where adata.X contains the expression count matrix.
+    matrix_path : str, optional
+        Path to a CSV or TSV file containing the expression matrix. If provided, `adata` is ignored.
+        Assumes genes are rows and cells are columns.
+    sep : str, optional
+        Separator for the input CSV/TSV file. Default is inferred by pandas.
     binarize : bool, optional, default=False
         Whether to binarize the output scores into SnCs vs. normal cells.
     species : str, optional, default="human"
@@ -103,7 +110,20 @@ def DeepScence(
     - Setting `denoise = True` increases runtime, but is recommended.
 
     """
-    assert isinstance(adata, anndata.AnnData), "adata must be an AnnData instance"
+    if matrix_path is not None:
+        logger.info(f"Loading expression matrix from {matrix_path}")
+        df = pd.read_csv(matrix_path, sep=sep)
+        # AnnData expects shape (n_obs, n_vars) i.e., (cells, genes)
+        # Most CSV exports have genes as rows, cells as columns.
+        # We transpose to match AnnData convention.
+        adata = anndata.AnnData(df.T.values.astype(np.float32))
+        adata.obs_names = df.columns
+        adata.var_names = df.index
+        logger.info(f"Successfully loaded {adata.n_obs} cells and {adata.n_vars} genes.")
+    elif adata is None:
+        raise ValueError("Please provide either an `adata` object or a `matrix_path`.")
+    else:
+        assert isinstance(adata, anndata.AnnData), "`adata` must be an AnnData instance."
     warnings.filterwarnings("ignore", category=RuntimeWarning, module="threadpoolctl")
 
     # check if GPU is available
